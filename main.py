@@ -22,6 +22,9 @@ def keyboard_input(inp, player, ships):
         player.x = player.x - 1
     elif inp == curses.KEY_RIGHT:
         player.x = player.x + 1
+    elif inp == ord('b'):
+        b = make_bomb(player.x, player.y - 1)
+        ships.append(b)
     elif inp == ord('l') and player.laser_num != 0:
         player.laser_num -= 1
         l1 = Ship()
@@ -151,6 +154,15 @@ def move_enemies(ships, player):
             move_ufo(s, player, ships)
         elif s.type == "UFO laser":
             s.y += 1
+def make_bomb(x, y):
+    bomb = Ship()
+    bomb.x = x
+    bomb.y = y
+    bomb.color = 4
+    bomb.dead = False
+    bomb.type = "bomb"
+    bomb.image = ["o"]
+    return bomb
 
 def update_world(player, ships):
     move_enemies(ships, player)
