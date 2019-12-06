@@ -46,6 +46,19 @@ def keyboard_input(inp, player, ships):
         (player.y + len(player.image) - 1 == display.MAP_HEIGHT)):
         player.x = oldx
         player.y = oldy
+        
+def new_item(x,y):
+    item = Ship()
+    item.x = x
+    item.y = y
+    item.color = 0
+    item.dead = False
+    item.type = "item"
+    item.image = ["|"]
+    item.animation = "|/-\\"
+    item.frame = 0
+    return item
+
 
 def new_meteor():
     meteor = Ship()
@@ -78,10 +91,7 @@ def move_ufo(s,player, ships):
             s.x -= 1
 
     for s2 in ships:
-        if s2.type == "laser" and is_colliding(s, s2):
-            score += 2
-            s.dead = True
-            s2.dead = True
+
         if s2.type == "meteor" and is_colliding(s, s2):
             s.dead = True
             s2.dead = True
@@ -171,7 +181,14 @@ def check_collisions(ships):
         elif types == ("player", "meteor"):
             news.append("KABOOM! You died so hard...")
             s1.dead = True
-
+        elif types == ("laser","UFO"):
+            score += 2
+            s1.dead = True
+            s2.dead = True
+            ships.append(new_item(s1.x, s1.y))
+        elif types == ("item","player"):
+            score += 99999999999
+            s1.dead = True
 def make_player():
     player = Ship()
     player.x = display.MAP_WIDTH / 2
@@ -215,10 +232,23 @@ def main(screen):
                 player.laser_num += 1
             laser_timer = 3
 
+        # Filter ship list to get items only
+        items = filter(lambda s: s.type == "item", ships)
+        # Loop over items
+        for i in items:
+            # Increase frame by one
+            i.frame += 1
+            # If the frame value is higher than the max animation index, reset it to 0
+            if i.frame > 3:
+                i.frame = 0
+            # Change image to be the character in the animation string at that frame
+            i.image = i.animation[i.frame]
+
+
         #NEW ENEMIES
-        for x in range(5):
+        for x in range(3):
             ships.append(new_meteor())
-        for x in range(1):
+        for x in range(randint(0, 1)):
             ships.append(new_UFO())
 
         #PLAYER INPUT
