@@ -2,7 +2,7 @@ import curses
 import display
 from display import init_colors, display_news, display_stars, init_stars
 from news import news
-from random import randint
+from random import randint, choice
 from itertools import combinations, permutations
 
 score = 0
@@ -10,6 +10,40 @@ score = 0
 
 class Ship:
     pass
+
+def first(f,l):
+    for x in l:
+        if f(x):
+            return x
+    return None
+
+
+def make_explosions(ships,bomb):
+    cmods = [(-1,-1), (0,-1), (1,-1),
+             (-1, 0), (0, 0), (1, 0),
+             (-1, 1), (0, 1), (1, 1)]
+    for cm in cmods:
+        bx = bomb.x
+        by = bomb.y
+        mx = cm[0]
+        my = cm[1]
+        ex = bx + mx
+        ey = by + my
+        e = make_explosion(ex,ey)
+        ships.append (e)
+
+
+def make_explosion(x,y):
+    explosion = Ship()
+    explosion.x = x
+    explosion.y = y
+    explosion.color = choice([1, 3])
+    explosion.dead = False
+    explosion.type = "explosion"
+    img = choice("0oO")
+    explosion.image = [img]
+    return explosion
+
 
 def keyboard_input(inp, player, ships):
     oldx = player.x
@@ -22,9 +56,15 @@ def keyboard_input(inp, player, ships):
         player.x = player.x - 1
     elif inp == curses.KEY_RIGHT:
         player.x = player.x + 1
-    elif inp == ord('b'):
-        b = make_bomb(player.x, player.y - 1)
+    elif inp == ord('b') and player.laser_num >= 2:
+        b = make_bomb(player.x +2, player.y)
         ships.append(b)
+        player.laser_num -= 2
+    elif inp == ord('d'):
+        bomb = first(lambda s: s.type == "bomb", ships)
+        if bomb != None:
+            ships.remove(bomb)
+            make_explosions(ships, bomb)
     elif inp == ord('l') and player.laser_num != 0:
         player.laser_num -= 1
         l1 = Ship()
@@ -144,7 +184,7 @@ def is_colliding(s1,s2):
         return False
     return check(s1,s2) or check(s2,s1)
 
-def move_enemies(ships, player):
+def move_ships(ships, player):
     for s in ships:
         if s.type == "meteor":
             s.y = s.y + 1
@@ -154,6 +194,9 @@ def move_enemies(ships, player):
             move_ufo(s, player, ships)
         elif s.type == "UFO laser":
             s.y += 1
+        elif s.type == "bomb":
+            s.y -= 1
+
 def make_bomb(x, y):
     bomb = Ship()
     bomb.x = x
@@ -165,7 +208,9 @@ def make_bomb(x, y):
     return bomb
 
 def update_world(player, ships):
-    move_enemies(ships, player)
+    # Filter ship list to get items only
+    animate_items(ships)
+    move_ships(ships, player)
     check_collisions(ships)
     for s in ships:
         if s.y >= display.MAP_HEIGHT:
@@ -199,8 +244,11 @@ def check_collisions(ships):
             s2.dead = True
             ships.append(new_item(s1.x, s1.y))
         elif types == ("item","player"):
-            score += 99999999999
+            score += 9999999999
             s1.dead = True
+        elif s1.type == "explosion":
+            s2.dead = True
+
 def make_player():
     player = Ship()
     player.x = display.MAP_WIDTH / 2
@@ -232,7 +280,7 @@ def main(screen):
     laser_timer = 3
     KEY_Q = 113
 
-    news.append("WELCOME TO SPACE ATTACK!!!!")
+    news.append("WELCOME TO SPACE ATTACK!!!")
 
     while (inp != KEY_Q):  # Quit game if player presses "q"
         screen.clear()
@@ -244,18 +292,8 @@ def main(screen):
                 player.laser_num += 1
             laser_timer = 3
 
-        # Filter ship list to get items only
-        items = filter(lambda s: s.type == "item", ships)
-        # Loop over items
-        for i in items:
-            # Increase frame by one
-            i.frame += 1
-            # If the frame value is higher than the max animation index, reset it to 0
-            if i.frame > 3:
-                i.frame = 0
-            # Change image to be the character in the animation string at that frame
-            i.image = i.animation[i.frame]
-
+        # Filter ships list to only include non-explosions
+        ships = filter(lambda s:s.type != "explosion", ships)
 
         #NEW ENEMIES
         for x in range(3):
@@ -267,7 +305,7 @@ def main(screen):
         if player.dead == False:
             keyboard_input(inp, player, ships)
 
-        #MOVE ENEMIES/CHECK COLLISIONS/ETC
+        #MOVE ENEMIES/CHECK COLLISIONS/ETC...
         ships = update_world(player, ships)
 
         #OUTPUT
@@ -275,6 +313,19 @@ def main(screen):
 
         #GET KEYBOARD INPUT/END TURN
         inp = screen.getch()
+
+
+def animate_items(ships):
+    items = filter(lambda s: s.type == "item", ships)
+    # Loop over items
+    for i in items:
+        # Increase frame by one
+        i.frame += 1
+        # If the frame value is higher than the max animation index, reset it to 0
+        if i.frame > 3:
+            i.frame = 0
+        # Change image to be the character in the animation string at that frame
+        i.image = i.animation[i.frame]
 
 
 curses.wrapper(main)
