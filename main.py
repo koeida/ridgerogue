@@ -45,6 +45,19 @@ def make_explosion(x,y):
     return explosion
 
 
+def create_shield(x, y):
+    shield = Ship()
+    shield.x = x
+    shield.y = y
+    shield.color = 4
+    shield.dead = False
+    shield.type = "shield"
+    img = ["_____"]
+    shield.image = img
+    return shield
+    
+
+
 def keyboard_input(inp, player, ships):
     oldx = player.x
     oldy = player.y
@@ -56,17 +69,24 @@ def keyboard_input(inp, player, ships):
         player.x = player.x - 1
     elif inp == curses.KEY_RIGHT:
         player.x = player.x + 1
-    elif inp == ord('b') and player.laser_num >= 2:
+    elif inp == ord('b') and player.energy_num >= 2:
         b = make_bomb(player.x +2, player.y)
         ships.append(b)
-        player.laser_num -= 2
+        player.energy_num -= 2
     elif inp == ord('d'):
         bomb = first(lambda s: s.type == "bomb", ships)
         if bomb != None:
             ships.remove(bomb)
             make_explosions(ships, bomb)
-    elif inp == ord('l') and player.laser_num != 0:
-        player.laser_num -= 1
+    elif inp == ord('s'):
+        shield = first(lambda s: s.type == "shield", ships)
+        if shield != None:
+            ships.remove(shield)
+        else:
+            shield = create_shield(player.x + 1, player.y - 1)
+            ships.append(shield)
+    elif inp == ord('l') and player.energy_num != 0:
+        player.energy_num -= 1
         l1 = Ship()
         l1.x = player.x
         l1.y = player.y
@@ -165,7 +185,7 @@ def display_screen(player, score, screen, ships, stars):
         middle_x = int((player.x + (player.x + p_width)) / 2)
         screen.addstr(player.y, middle_x, "O", curses.color_pair(1))
     display_news(screen, news)
-    screen.addstr(1, 1, "power: " + ("!" * player.laser_num), curses.color_pair(1))
+    screen.addstr(1, 1, "power: " + ("!" * player.energy_num), curses.color_pair(1))
     screen.refresh()
 
 
@@ -196,6 +216,10 @@ def move_ships(ships, player):
             s.y += 1
         elif s.type == "bomb":
             s.y -= 1
+        elif s.type == "shield":
+            s.y = player.y - 1
+            s.x = player.x
+
 
 def make_bomb(x, y):
     bomb = Ship()
@@ -212,12 +236,13 @@ def update_world(player, ships):
     animate_items(ships)
     move_ships(ships, player)
     check_collisions(ships)
+
     for s in ships:
         if s.y >= display.MAP_HEIGHT:
             s.dead = True
         if s.y < 0:
             s.dead = True
-    ships = filter(lambda s: s.dead != True, ships)
+    ships = filter(lambda s: s.dead != True, ships) # SUSPICIOUS!!! HMMM...
     return ships
 
 def check_collisions(ships):
@@ -248,6 +273,9 @@ def check_collisions(ships):
             s1.dead = True
         elif s1.type == "explosion":
             s2.dead = True
+        elif s1.type == "shield":
+            s2.dead = True
+
 
 def make_player():
     player = Ship()
@@ -256,7 +284,7 @@ def make_player():
     player.dead = False
     player.type = "player"
     player.color = 0
-    player.laser_num = 5
+    player.energy_num = 5
     player.image = [
         ' /@\\ ',
         '|<X>|',
@@ -288,8 +316,8 @@ def main(screen):
         #TIMERS
         laser_timer -= 1
         if laser_timer == 0:
-            if player.laser_num <= 10:
-                player.laser_num += 1
+            if player.energy_num <= 10:
+                player.energy_num += 1
             laser_timer = 3
 
         # Filter ships list to only include non-explosions
@@ -301,9 +329,18 @@ def main(screen):
         for x in range(randint(0, 1)):
             ships.append(new_UFO())
 
+
         #PLAYER INPUT
         if player.dead == False:
             keyboard_input(inp, player, ships)
+
+        # If there a shield on
+        #   remove some power
+        shield = first(lambda s: s.type == "shield", ships)
+        if shield != None:
+            player.energy_num -= 2
+        if player.energy_num <= 0 and shield != None:
+            ships.remove(shield)
 
         #MOVE ENEMIES/CHECK COLLISIONS/ETC...
         ships = update_world(player, ships)
