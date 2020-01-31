@@ -71,7 +71,7 @@ def keyboard_input(inp, player, ships):
         player.x = player.x + 1
     elif inp == ord('b') and player.energy_num >= 2:
         b = make_bomb(player.x +2, player.y)
-        ships.append(b)
+        ships.insert(0,b)
         player.energy_num -= 2
     elif inp == ord('d'):
         bomb = first(lambda s: s.type == "bomb", ships)
@@ -84,7 +84,8 @@ def keyboard_input(inp, player, ships):
             ships.remove(shield)
         else:
             shield = create_shield(player.x + 1, player.y - 1)
-            ships.append(shield)
+            ships.insert(0,shield)
+            news.append("shield made")
     elif inp == ord('l') and player.energy_num != 0:
         player.energy_num -= 1
         l1 = Ship()
@@ -101,8 +102,8 @@ def keyboard_input(inp, player, ships):
         l2.type = "laser"
         l2.dead = False
         l2.color = 1
-        ships.append(l1)
-        ships.append(l2)
+        ships.insert(0,l1)
+        ships.insert(0,l2)
 
     if  ((player.x + len(player.image[0]) > display.MAP_WIDTH) or
         (player.x < 0) or
@@ -198,27 +199,26 @@ def is_colliding(s1,s2):
             if m.y >= p.y and m.y < p.y + p_height:
                 return True
 
-        if m.type == "laser" and m.x == p.x and m.y == p.y - 1:
-            return True
+        #if m.type == "laser" and m.x == p.x and m.y == p.y - 1:
+        #    return True
 
         return False
     return check(s1,s2) or check(s2,s1)
 
-def move_ships(ships, player):
-    for s in ships:
-        if s.type == "meteor":
-            s.y = s.y + 1
-        elif s.type == "laser":
-            s.y = s.y - 1
-        elif s.type == "UFO":
-            move_ufo(s, player, ships)
-        elif s.type == "UFO laser":
-            s.y += 1
-        elif s.type == "bomb":
-            s.y -= 1
-        elif s.type == "shield":
-            s.y = player.y - 1
-            s.x = player.x
+def move_ship(s, ships, player):
+    if s.type == "meteor":
+        s.y = s.y + 1
+    elif s.type == "laser":
+        s.y = s.y - 1
+    elif s.type == "UFO":
+        move_ufo(s, player, ships)
+    elif s.type == "UFO laser":
+        s.y += 1
+    elif s.type == "bomb":
+        s.y -= 1
+    elif s.type == "shield":
+        s.y = player.y - 1
+        s.x = player.x
 
 
 def make_bomb(x, y):
@@ -234,47 +234,57 @@ def make_bomb(x, y):
 def update_world(player, ships):
     # Filter ship list to get items only
     animate_items(ships)
-    move_ships(ships, player)
-    check_collisions(ships)
-
     for s in ships:
-        if s.y >= display.MAP_HEIGHT:
-            s.dead = True
-        if s.y < 0:
-            s.dead = True
-    ships = filter(lambda s: s.dead != True, ships) # SUSPICIOUS!!! HMMM...
+        move_ship(s, ships, player)
+        check_collisions(s, ships)
+
+    ships = filter(lambda s: s.y <= display.MAP_HEIGHT and s.y >= 0, ships)
     return ships
 
-def check_collisions(ships):
+def saferemove(i,l):
+    if i in l:
+        l.remove(i)
+
+def check_collisions(s1, ships):
     global score
 
-    ship_pairs = permutations(ships, 2)
-    colliding_ships = filter(lambda pair: is_colliding(pair[0], pair[1]), ship_pairs)
+    colliding_ships = filter(lambda sb: s1 != sb and is_colliding(s1, sb), ships)
 
-    for s1, s2 in colliding_ships:
+
+    for s2 in colliding_ships:
         types = (s1.type, s2.type)
-        if types == ("laser", "meteor"):
+        if set(types) == set(["laser", "meteor"]) :
             score += 1
-            s1.dead = True
-            s2.dead = True
-        elif types == ("player", "UFO laser"):
-            s1.dead = True
-            s2.dead = True
-        elif types == ("player", "meteor"):
+            saferemove(s1, ships)
+            saferemove(s2, ships)
+        elif set(types) == set(["meteor","meteor"]):
+            saferemove(s1, ships)
+            saferemove(s2, ships)
+        elif set(types) == set(["player", "UFO laser"]):
+            saferemove(s1, ships)
+            saferemove(s2, ships)
+        elif set(types) == set(["player", "meteor"]):
             news.append("KABOOM! You died so hard...")
-            s1.dead = True
-        elif types == ("laser","UFO"):
+            saferemove(s1, ships)
+            saferemove(s2, ships)
+        elif set(types) == set(["laser","UFO"]):
             score += 2
-            s1.dead = True
-            s2.dead = True
+            saferemove(s1, ships)
+            saferemove(s2, ships)
             ships.append(new_item(s1.x, s1.y))
         elif types == ("item","player"):
             score += 9999999999
-            s1.dead = True
+            saferemove(s1, ships)
         elif s1.type == "explosion":
-            s2.dead = True
+            saferemove(s2, ships)
+        elif s2.type == "explosion":
+            saferemove(s1, ships)
         elif s1.type == "shield":
-            s2.dead = True
+            news.append("shield collide")
+            saferemove(s2, ships)
+        elif s2.type == "shield":
+            news.append("shield collide")
+            saferemove(s1, ships)
 
 
 def make_player():
@@ -324,18 +334,20 @@ def main(screen):
         ships = filter(lambda s:s.type != "explosion", ships)
 
         #NEW ENEMIES
-        for x in range(3):
-            ships.append(new_meteor())
-        for x in range(randint(0, 1)):
-            ships.append(new_UFO())
+        if len(ships) < 5:
+            for x in range(3):
+                ships.append(new_meteor())
+            for x in range(randint(0, 1)):
+                ships.append(new_UFO())
 
 
         #PLAYER INPUT
-        if player.dead == False:
+        if player in ships:
             keyboard_input(inp, player, ships)
 
         # If there a shield on
         #   remove some power
+
         shield = first(lambda s: s.type == "shield", ships)
         if shield != None:
             player.energy_num -= 2
