@@ -334,11 +334,11 @@ def main(screen):
         ships = filter(lambda s:s.type != "explosion", ships)
 
         #NEW ENEMIES
-        if len(ships) < 5:
-            for x in range(3):
-                ships.append(new_meteor())
-            for x in range(randint(0, 1)):
-                ships.append(new_UFO())
+
+        for x in range(3):
+            ships.append(new_meteor())
+        for x in range(randint(0, 1)):
+            ships.append(new_UFO())
 
 
         #PLAYER INPUT
@@ -348,14 +348,18 @@ def main(screen):
         # If there a shield on
         #   remove some power
 
+
+
+        #MOVE ENEMIES/CHECK COLLISIONS/ETC...
+        ships = update_world(player, ships)
+        
         shield = first(lambda s: s.type == "shield", ships)
         if shield != None:
             player.energy_num -= 2
         if player.energy_num <= 0 and shield != None:
             ships.remove(shield)
-
-        #MOVE ENEMIES/CHECK COLLISIONS/ETC...
-        ships = update_world(player, ships)
+        if player not in ships and shield != None:
+            ships.remove(shield)
 
         #OUTPUT
         display_screen(player, score, screen, ships, stars)
