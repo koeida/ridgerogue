@@ -238,7 +238,7 @@ def update_world(player, ships):
         move_ship(s, ships, player)
         check_collisions(s, ships)
 
-    ships = filter(lambda s: s.y <= display.MAP_HEIGHT and s.y >= 0, ships)
+    ships = list(filter(lambda s: s.y <= display.MAP_HEIGHT and s.y >= 0, ships))
     return ships
 
 def saferemove(i,l):
@@ -248,7 +248,7 @@ def saferemove(i,l):
 def check_collisions(s1, ships):
     global score
 
-    colliding_ships = filter(lambda sb: s1 != sb and is_colliding(s1, sb), ships)
+    colliding_ships = list(filter(lambda sb: s1 != sb and is_colliding(s1, sb), ships))
 
 
     for s2 in colliding_ships:
@@ -331,7 +331,7 @@ def main(screen):
             laser_timer = 3
 
         # Filter ships list to only include non-explosions
-        ships = filter(lambda s:s.type != "explosion", ships)
+        ships = list(filter(lambda s:s.type != "explosion", ships))
 
         #NEW ENEMIES
 
@@ -352,7 +352,7 @@ def main(screen):
 
         #MOVE ENEMIES/CHECK COLLISIONS/ETC...
         ships = update_world(player, ships)
-        
+
         shield = first(lambda s: s.type == "shield", ships)
         if shield != None:
             player.energy_num -= 2
@@ -369,7 +369,7 @@ def main(screen):
 
 
 def animate_items(ships):
-    items = filter(lambda s: s.type == "item", ships)
+    items = list(filter(lambda s: s.type == "item", ships))
     # Loop over items
     for i in items:
         # Increase frame by one
